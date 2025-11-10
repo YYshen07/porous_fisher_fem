@@ -1,12 +1,13 @@
 function sensitive_analysis_4()
-% 敏感性分析：扫描 Lx/Ly、afr、threshold 组合，记录 50% 与完全铺满步长
-% 并在 50% 铺满时刻及其 ±20 步保存阈值等值线点数据
+% 敏感性分析（两遍计算版）：
+% 第一遍：扫描 Lx/Ly、afr、threshold 组合，记录 50% 与完全铺满步长
+% 第二遍：在 50% 步、T50-20、T50+20、T50-2%full、T50+2%full 保存阈值等值线点数据
 
-    L_values = [40, 60, 80];
+    L_values   = [40, 60, 80];
     thresholds = [0.65, 0.8, 0.95];
     afr_values = [0.1, 0.25, 0.4];
-    iflag = 1;
-    max_steps = 60000;
+    iflag      = 1;
+    max_steps  = 60000;
 
     output_dir = fullfile(pwd, 'sensitive_analysis');
     if ~exist(output_dir, 'dir')
@@ -24,40 +25,79 @@ function sensitive_analysis_4()
         Ly = Lx;
         for afr = afr_values
             for threshold = thresholds
-                result = run_single_case(Lx, Ly, afr, iflag, threshold, max_steps);
 
-                fifty_str = value_or_na(result.fifty_step);
-                full_str = value_or_na(result.full_step);
-                minus20_str = value_or_na(result.fifty_step_minus);
-                plus20_str = value_or_na(result.fifty_step_plus);
-                minus2pct_str = value_or_na(result.fifty_step_minus_2pct);
-                plus2pct_str = value_or_na(result.fifty_step_plus_2pct);
+                % ===== 第一遍：只计算 T50 和 Tfull =====
+                [fifty_step, full_step] = run_single_case_first_pass( ...
+                    Lx, Ly, afr, iflag, threshold, max_steps);
+
+                % ===== 根据 T50 和 Tfull 计算 5 个目标步长 =====
+                if isnan(fifty_step)
+                    step_minus20        = NaN;
+                    step_plus20         = NaN;
+                    step_minus_2pct     = NaN;
+                    step_plus_2pct      = NaN;
+                else
+                    % T50-20 / T50+20
+                    step_minus20 = fifty_step - 20;
+                    if step_minus20 < 1 || step_minus20 > max_steps
+                        step_minus20 = NaN;
+                    end
+
+                    step_plus20 = fifty_step + 20;
+                    if step_plus20 < 1 || step_plus20 > max_steps
+                        step_plus20 = NaN;
+                    end
+
+                    % T50 ± 2%·Tfull
+                    if isnan(full_step)
+                        step_minus_2pct = NaN;
+                        step_plus_2pct  = NaN;
+                    else
+                        delta_2pct = floor(0.02 * full_step);
+
+                        step_minus_2pct = fifty_step - delta_2pct;
+                        if step_minus_2pct < 1 || step_minus_2pct > max_steps
+                            step_minus_2pct = NaN;
+                        end
+
+                        step_plus_2pct = fifty_step + delta_2pct;
+                        if step_plus_2pct < 1 || step_plus_2pct > max_steps
+                            step_plus_2pct = NaN;
+                        end
+                    end
+                end
+
+                % ===== 打印一行结果 =====
+                fifty_str    = value_or_na(fifty_step);
+                full_str     = value_or_na(full_step);
+                minus20_str  = value_or_na(step_minus20);
+                plus20_str   = value_or_na(step_plus20);
+                minus2pct_str= value_or_na(step_minus_2pct);
+                plus2pct_str = value_or_na(step_plus_2pct);
+
                 fprintf('%d\t%d\t%.2f\t%.2f\t%s\t%s\t%s\t%s\t%s\t%s\n', ...
                     Lx, Ly, afr, threshold, fifty_str, full_str, ...
                     minus20_str, plus20_str, minus2pct_str, plus2pct_str);
 
-                save_contour_state(output_dir, Lx, Ly, afr, iflag, ...
-                    result.fifty_step_minus, threshold, result.state_minus, result.m, result.n);
-                save_contour_state(output_dir, Lx, Ly, afr, iflag, ...
-                    result.fifty_step, threshold, result.state_fifty, result.m, result.n);
-                save_contour_state(output_dir, Lx, Ly, afr, iflag, ...
-                    result.fifty_step_plus, threshold, result.state_plus, result.m, result.n);
-                save_contour_state(output_dir, Lx, Ly, afr, iflag, ...
-                    result.fifty_step_minus_2pct, threshold, result.state_minus_2pct, result.m, result.n);
-                save_contour_state(output_dir, Lx, Ly, afr, iflag, ...
-                    result.fifty_step_plus_2pct, threshold, result.state_plus_2pct, result.m, result.n);
-
+                % ===== 记录到 summary_data =====
                 summary_data(end+1) = struct( ... %#ok<AGROW>
                     'Lx', Lx, ...
                     'Ly', Ly, ...
                     'afr', afr, ...
                     'threshold', threshold, ...
-                    'fifty_step', result.fifty_step, ...
-                    'full_step', result.full_step, ...
-                    'step_minus20', result.fifty_step_minus, ...
-                    'step_plus20', result.fifty_step_plus, ...
-                    'step_minus_2pct_full', result.fifty_step_minus_2pct, ...
-                    'step_plus_2pct_full', result.fifty_step_plus_2pct);
+                    'fifty_step', fifty_step, ...
+                    'full_step', full_step, ...
+                    'step_minus20', step_minus20, ...
+                    'step_plus20', step_plus20, ...
+                    'step_minus_2pct_full', step_minus_2pct, ...
+                    'step_plus_2pct_full', step_plus_2pct);
+
+                % ===== 第二遍：在 5 个目标步长保存等值线 csv =====
+                target_steps = [fifty_step, step_minus20, step_plus20, ...
+                                step_minus_2pct, step_plus_2pct];
+                run_single_case_second_pass( ...
+                    Lx, Ly, afr, iflag, threshold, max_steps, ...
+                    target_steps, output_dir);
             end
         end
     end
@@ -70,15 +110,17 @@ function sensitive_analysis_4()
     end
 end
 
-function result = run_single_case(Lx, Ly, afr, iflag, threshold, max_steps)
+%% ====================== 第一遍：只算 T50 和 Tfull ======================
+function [fifty_step, full_step] = run_single_case_first_pass(Lx, Ly, afr, iflag, threshold, max_steps)
     dx = 1;
     dy = 1;
-    m = Lx / dx;
-    n = Ly / dy;
+    m  = Lx / dx;
+    n  = Ly / dy;
 
     snum1 = (m + 1) * n;
     snum2 = (n + 1) * m;
 
+    % 单元与边对应
     e_s = 1:m*n;
     e_n = (n + 1):(m + 1) * n;
 
@@ -93,25 +135,113 @@ function result = run_single_case(Lx, Ly, afr, iflag, threshold, max_steps)
     s0 = zeros(1, snum1 + snum2);
     e0 = zeros(1, m * n);
 
-    buffer_len = 64;
-    recent_steps = nan(1, buffer_len);
-    recent_states = cell(1, buffer_len);
-
-    fifty_step = [];
-    full_step = [];
-    state_minus = [];
-    state_fifty = [];
-    state_plus = [];
-    state_minus_2pct = [];
-    state_plus_2pct = [];
-
-    target_minus = [];
-    target_plus = [];
-    target_minus_2pct = [];
-    target_plus_2pct = [];
-    delta_2pct = [];
+    fifty_step = NaN;
+    full_step  = NaN;
 
     for step = 1:max_steps
+        % --- 更新单元量 e0 ---
+        for j = 1:m*n
+            switch iflag
+                case 1
+                    % 边界单元保持为 1
+                    if (j <= n) || (j > (m - 1) * n) || any(j == 1:n:m*n) || any(j == n:n:m*n)
+                        e0(j) = 1;
+                    else
+                        e2 = ((s0(e_e(j)) - 2 * e0(j) + s0(e_w(j))) / dx^2 + ...
+                              (s0(e_n(j)) - 2 * e0(j) + s0(e_s(j))) / dy^2);
+                        e0(j) = afr * e2 / dx / dy + e0(j);
+                    end
+                otherwise
+                    error('当前敏感性分析只支持 iflag = 1。');
+            end
+        end
+
+        % --- 更新边量 s0（水平方向） ---
+        for j = 1:snum1
+            if j <= n
+                % 下边界
+                s0(j) = e0(j);
+            elseif j > snum1 - n
+                % 上边界
+                s0(j) = e0(j - n);
+            else
+                % 内部水平边
+                s0(j) = 0.5 * (e0(j) + e0(j - n));
+            end
+        end
+
+        % --- 更新边量 s0（竖直方向） ---
+        for j = 1:snum2
+            if mod(j, n + 1) == 1
+                % 左边界
+                s0(snum1 + j) = e0(j + 1 - floor(j / (n + 1)) + 1);
+            elseif mod(j, n + 1) == 0
+                % 右边界
+                s0(snum1 + j) = e0(j - floor(j / (n + 1)) - 1);
+            else
+                % 内部竖直边
+                id = floor(j / (n + 1));
+                s0(snum1 + j) = 0.5 * (e0(j - 1 - id) + e0(j - id));
+            end
+        end
+
+        % --- 计算铺满比例 ---
+        filled_ratio = sum(e0 >= threshold) / numel(e0);
+
+        if isnan(fifty_step) && filled_ratio >= 0.5
+            fifty_step = step;
+        end
+
+        if isnan(full_step) && all(e0 >= threshold)
+            full_step = step;
+        end
+
+        % T50 和 Tfull 都算出来了就可以停
+        if ~isnan(fifty_step) && ~isnan(full_step)
+            break;
+        end
+    end
+end
+
+%% ====================== 第二遍：固定步长取状态并保存 csv ======================
+function run_single_case_second_pass(Lx, Ly, afr, iflag, threshold, max_steps, target_steps, output_dir)
+    dx = 1;
+    dy = 1;
+    m  = Lx / dx;
+    n  = Ly / dy;
+
+    snum1 = (m + 1) * n;
+    snum2 = (n + 1) * m;
+
+    % 单元与边对应
+    e_s = 1:m*n;
+    e_n = (n + 1):(m + 1) * n;
+
+    t_ = (m + 1) * n + (1:m*(n + 1));
+    t_(n + 1:n + 1:end) = [];
+    e_w = t_;
+
+    t_ = (m + 1) * n + (2:m*(n + 1));
+    t_(n + 1:n + 1:end) = [];
+    e_e = t_;
+
+    s0 = zeros(1, snum1 + snum2);
+    e0 = zeros(1, m * n);
+
+    % 只保留合法的目标步长
+    valid_steps = target_steps(~isnan(target_steps) & ...
+                               target_steps >= 1 & ...
+                               target_steps <= max_steps);
+    valid_steps = unique(valid_steps);  % 去重
+
+    if isempty(valid_steps)
+        return;
+    end
+
+    max_target_step = max(valid_steps);
+
+    for step = 1:max_steps
+        % --- 更新单元量 e0 ---
         for j = 1:m*n
             switch iflag
                 case 1
@@ -127,6 +257,7 @@ function result = run_single_case(Lx, Ly, afr, iflag, threshold, max_steps)
             end
         end
 
+        % --- 更新边量 s0（水平方向） ---
         for j = 1:snum1
             if j <= n
                 s0(j) = e0(j);
@@ -137,6 +268,7 @@ function result = run_single_case(Lx, Ly, afr, iflag, threshold, max_steps)
             end
         end
 
+        % --- 更新边量 s0（竖直方向） ---
         for j = 1:snum2
             if mod(j, n + 1) == 1
                 s0(snum1 + j) = e0(j + 1 - floor(j / (n + 1)) + 1);
@@ -148,109 +280,20 @@ function result = run_single_case(Lx, Ly, afr, iflag, threshold, max_steps)
             end
         end
 
-        idx = mod(step - 1, buffer_len) + 1;
-        recent_steps(idx) = step;
-        recent_states{idx} = e0;
-
-        filled_ratio = sum(e0 >= threshold) / numel(e0);
-        if isempty(fifty_step) && filled_ratio >= 0.5
-            fifty_step = step;
-            state_fifty = e0;
-            target_minus = step - 20;
-            if target_minus >= 1
-                minus_idx = find(recent_steps == target_minus, 1);
-                if ~isempty(minus_idx)
-                    state_minus = recent_states{minus_idx};
-                end
-            end
-            target_plus = step + 20;
+        % --- 在目标步长上保存 csv ---
+        if any(step == valid_steps)
+            save_contour_state(output_dir, Lx, Ly, afr, iflag, ...
+                step, threshold, e0, m, n);
         end
 
-        if isempty(full_step) && all(e0 >= threshold)
-            full_step = step;
-            % 计算 2% full_step 的偏移量
-            delta_2pct = floor(0.02 * full_step);
-            if ~isempty(fifty_step)
-                target_minus_2pct = fifty_step - delta_2pct;
-                target_plus_2pct = fifty_step + delta_2pct;
-                % 尝试从缓冲区获取 minus_2pct
-                if target_minus_2pct >= 1
-                    minus_idx = find(recent_steps == target_minus_2pct, 1);
-                    if ~isempty(minus_idx)
-                        state_minus_2pct = recent_states{minus_idx};
-                    end
-                end
-            end
-        end
-
-        if ~isempty(target_plus) && isempty(state_plus) && step >= target_plus && target_plus <= max_steps
-            state_plus = e0;
-        end
-
-        if ~isempty(target_plus_2pct) && isempty(state_plus_2pct) && step >= target_plus_2pct && target_plus_2pct <= max_steps
-            state_plus_2pct = e0;
-        end
-
-        need_plus = false;
-        if ~isempty(target_plus) && target_plus <= max_steps
-            need_plus = true;
-        end
-
-        need_plus_2pct = false;
-        if ~isempty(target_plus_2pct) && target_plus_2pct <= max_steps
-            need_plus_2pct = true;
-        end
-
-        if ~isempty(fifty_step) && (~need_plus || ~isempty(state_plus)) && ...
-           (~need_plus_2pct || ~isempty(state_plus_2pct)) && ~isempty(full_step)
+        % 所有目标步长都已经到达了就可以停
+        if step >= max_target_step
             break;
         end
     end
-
-    if isempty(fifty_step)
-        fifty_step = NaN;
-    end
-    if isempty(full_step)
-        full_step = NaN;
-    end
-    if isempty(target_minus) || target_minus < 1
-        fifty_step_minus = NaN;
-    else
-        fifty_step_minus = target_minus;
-    end
-    if isempty(target_plus) || target_plus > max_steps
-        fifty_step_plus = NaN;
-    else
-        fifty_step_plus = target_plus;
-    end
-    if isempty(target_minus_2pct) || target_minus_2pct < 1
-        fifty_step_minus_2pct = NaN;
-    else
-        fifty_step_minus_2pct = target_minus_2pct;
-    end
-    if isempty(target_plus_2pct) || target_plus_2pct > max_steps
-        fifty_step_plus_2pct = NaN;
-    else
-        fifty_step_plus_2pct = target_plus_2pct;
-    end
-
-    result = struct( ...
-        'fifty_step', fifty_step, ...
-        'full_step', full_step, ...
-        'fifty_step_minus', fifty_step_minus, ...
-        'fifty_step_plus', fifty_step_plus, ...
-        'fifty_step_minus_2pct', fifty_step_minus_2pct, ...
-        'fifty_step_plus_2pct', fifty_step_plus_2pct, ...
-        'state_minus', state_minus, ...
-        'state_fifty', state_fifty, ...
-        'state_plus', state_plus, ...
-        'state_minus_2pct', state_minus_2pct, ...
-        'state_plus_2pct', state_plus_2pct, ...
-        'm', m, ...
-        'n', n ...
-    );
 end
 
+%% ====================== 保存等值线 csv（带阈值到文件名） ======================
 function save_contour_state(output_dir, Lx, Ly, afr, iflag, step, threshold, state, m, n)
     if isempty(state) || isnan(step)
         return;
@@ -262,14 +305,18 @@ function save_contour_state(output_dir, Lx, Ly, afr, iflag, step, threshold, sta
         return;
     end
 
-    filename = sprintf('Lx%d_Ly%d_afr%s_flag%d_timestep%d.csv', ...
-        Lx, Ly, trim_numeric_str(afr), iflag, step);
+    afr_str = trim_numeric_str(afr);
+    thr_str = trim_numeric_str(threshold);
+
+    filename = sprintf('Lx%d_Ly%d_afr%s_thr%s_flag%d_timestep%d.csv', ...
+        Lx, Ly, afr_str, thr_str, iflag, step);
     file_path = fullfile(output_dir, filename);
 
     T = array2table(curve_data, 'VariableNames', {'x', 'y', 'angle', 'curvature'});
     writetable(T, file_path);
 end
 
+%% ====================== 等值线采样为 0–90° 曲线 ======================
 function data = sample_interface_curve(z, Lx, Ly, threshold)
     [n, m] = size(z);
     x_grid = linspace(0, Lx, m + 1);
@@ -304,7 +351,7 @@ function data = sample_interface_curve(z, Lx, Ly, threshold)
 
     center_x = Lx / 2;
     center_y = Ly / 2;
-    right_top_mask = contour_points(:, 1) >= center_x & contour_points(:, 2) >= center_y;
+    right_top_mask   = contour_points(:, 1) >= center_x & contour_points(:, 2) >= center_y;
     right_top_points = contour_points(right_top_mask, :);
 
     if isempty(right_top_points)
@@ -312,10 +359,11 @@ function data = sample_interface_curve(z, Lx, Ly, threshold)
         return;
     end
 
-    angles = atan2d(right_top_points(:, 2) - center_y, right_top_points(:, 1) - center_x);
+    angles = atan2d(right_top_points(:, 2) - center_y, ...
+                    right_top_points(:, 1) - center_x);
     angles = mod(angles, 360);
 
-    valid_mask = angles >= 0 & angles <= 90;
+    valid_mask   = angles >= 0 & angles <= 90;
     valid_points = right_top_points(valid_mask, :);
     valid_angles = angles(valid_mask);
 
@@ -327,7 +375,7 @@ function data = sample_interface_curve(z, Lx, Ly, threshold)
     [sorted_angles, order] = sort(valid_angles);
     sorted_points = valid_points(order, :);
 
-    target_angles = 0:1:90;
+    target_angles  = 0:1:90;
     sampled_points = nan(numel(target_angles), 2);
 
     for k = 1:numel(target_angles)
@@ -372,6 +420,7 @@ function data = sample_interface_curve(z, Lx, Ly, threshold)
     data = [sampled_points, target_angles.', curvatures];
 end
 
+%% ====================== 小工具函数 ======================
 function out = value_or_na(val)
     if isnan(val)
         out = 'NA';
@@ -412,26 +461,19 @@ function curvatures = compute_curvature(points)
         V1 = V1 / L1;
         V2 = V2 / L2;
 
-        combined = V1 + V2;
-        if norm(combined) == 0
-            curvatures(idx) = 0;
-            continue;
-        end
-
         dx1 = P1(1) - P2(1);
         dy1 = P1(2) - P2(2);
         dx2 = P3(1) - P2(1);
         dy2 = P3(2) - P2(2);
 
-        dx_prime = (dx2 - dx1) / 2;
-        dy_prime = (dy2 - dy1) / 2;
-
-        dx_double_prime = dx2 + dx1;
-        dy_double_prime = dy2 + dy1;
+        dx_prime  = (dx2 - dx1) / 2;
+        dy_prime  = (dy2 - dy1) / 2;
+        dx2prime  = dx2 + dx1;
+        dy2prime  = dy2 + dy1;
 
         denominator = (dx_prime^2 + dy_prime^2)^(1.5);
         if denominator > 0
-            curvatures(idx) = abs(dx_prime * dy_double_prime - dy_prime * dx_double_prime) / denominator;
+            curvatures(idx) = abs(dx_prime * dy2prime - dy_prime * dx2prime) / denominator;
         else
             curvatures(idx) = 0;
         end
@@ -445,4 +487,3 @@ function write_summary_csv(output_dir, summary_data)
     file_path = fullfile(output_dir, 'sensitive_analysis_summary.csv');
     writetable(summary_table, file_path);
 end
-
