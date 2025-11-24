@@ -133,3 +133,60 @@ This folder hosts MATLAB and Python (Jupyter) scripts for finite-element–style
 > 以上脚本相互独立，可根据研究需求单独或串联使用；Jupyter Notebook 主要承担可视化与统计整理。  
 > Scripts are loosely coupled—invoke individually or in sequence per study needs; notebooks focus on visualization and statistics.
 
+---
+
+## 七、图像处理工具 / Image Processing Tools
+
+### `_others_image_processing/covarage_heatmap/`
+
+覆盖热力图处理工具：原始图像 → 灰度/彩色热力图 → 交互式裁剪 → 3D可视化。  
+Coverage heatmap tools: raw images → grayscale/colored heatmaps → interactive cropping → 3D visualization.
+
+#### **三步工作流程 / Three-Step Workflow**
+
+1. **`0_raw2gray_colored.ipynb`**（Jupyter Notebook）  
+   - 将 `0_raw_png/*.png` 转为灰度图和彩色热力图，输出到 `1_gray_colored_png/`。  
+     Converts raw images to grayscale and colored heatmaps in `1_gray_colored_png/`.
+   - 生成颜色映射标尺 `colormap_scale_bar.png`。  
+     Generates color mapping scale bar.
+
+2. **`1_interactive_crop.py`**（Python 脚本）  
+   - 修改脚本中 `IMAGE_NAME = "400_1"`，运行后点击两点选择裁剪区域，按 ESC 保存。  
+     Modify `IMAGE_NAME`, run, click two points to crop, press ESC to save.
+   - 输出裁剪图像到 `2_catched/liti*.png` 和透明度处理图像 `new_liti*.png`。  
+     Outputs cropped images to `2_catched/`.
+   - 需在 `covarage_heatmap` 目录下运行，每张图运行一次。  
+     Must run in `covarage_heatmap` directory, once per image.
+
+3. **`2_batch_3d_visualization.ipynb`**（Jupyter Notebook）  
+   - 批量读取 `2_catched/new_liti*.png`，生成灰度和绿色两版本的3D体素可视化。  
+     Batch processes images to create grayscale and green 3D voxel visualizations.
+   - 可修改 `IMAGE_NAMES` 列表选择要处理的图像。  
+     Modify `IMAGE_NAMES` list to select images to process.
+
+#### **使用示例 / Usage Example**
+
+```bash
+# Step 1: Jupyter 中运行 / Run in Jupyter
+0_raw2gray_colored.ipynb
+
+# Step 2: 逐张裁剪（修改 IMAGE_NAME 后运行）/ Crop one by one
+cd _others_image_processing/covarage_heatmap
+python 1_interactive_crop.py  # IMAGE_NAME = "400_1"
+python 1_interactive_crop.py  # IMAGE_NAME = "400_2"
+# ...
+
+# Step 3: Jupyter 中批量3D可视化 / Batch 3D visualization in Jupyter
+2_batch_3d_visualization.ipynb
+```
+
+#### **注意事项 / Notes**
+
+- 颜色映射、透明度阈值(64)、3D厚度(3)等参数已校准，不要修改。  
+  Color mapping, transparency threshold (64), 3D thickness (3) are calibrated; do not modify.
+- Python 脚本避免内核崩溃，处理完自动退出。  
+  Python script avoids kernel crashes and exits after processing.
+
+---
+
+## 八
