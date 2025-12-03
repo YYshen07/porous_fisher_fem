@@ -7,13 +7,11 @@ function draw_3d_4()
 
 %% ===== 1. 参数配置 =====
 PARAMS = [ ...
-    struct('Lx',40,'Ly',40,'afr',0.125,'iflag',1) ...
-    % 需要的话可以继续加：
-    % , struct('Lx',60,'Ly',60,'afr',0.25,'iflag',1)
+    struct('Lx',40,'Ly',40,'afr',0.25,'iflag',1,'inum_values',[400, 800, 1600]) ...
+    struct('Lx',60,'Ly',60,'afr',0.25,'iflag',1,'inum_values',[400, 800, 1600]) ...
+    struct('Lx',80,'Ly',80,'afr',0.25,'iflag',1,'inum_values',[400, 800, 1600])
 ];
 
-inum_values = [300, 900, 2100];  % 时间步
-h_          = 600;               % 高度缩放
 %% ======================
 
 for k = 1:numel(PARAMS)
@@ -22,6 +20,8 @@ for k = 1:numel(PARAMS)
     Ly   = p.Ly;
     afr  = p.afr;
     flag = p.iflag;
+    inum_values = p.inum_values;  % 从参数结构中获取时间步
+    h_   = Lx * 10;                % 高度缩放为 10 倍的 Lx
 
     % 参数目录
     outdir = param_dirname(Lx, Ly, afr, flag);
@@ -122,5 +122,5 @@ end
 %% 参数目录命名
 function outdir = param_dirname(Lx, Ly, afr, flag)
 afr_str = strrep(num2str(afr, '%.3f'), '.', 'p');  % 0.125 -> 0p125
-outdir  = sprintf('L%dx%d_afr%s_flag%d', Lx, Ly, afr_str, flag);
+outdir  = sprintf('3D_L%dx%d_afr%s_flag%d', Lx, Ly, afr_str, flag);
 end

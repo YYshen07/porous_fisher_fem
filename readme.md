@@ -189,4 +189,36 @@ python 1_interactive_crop.py  # IMAGE_NAME = "400_2"
 
 ---
 
-## 八
+## 八、深度分析工具 / Depth Analysis Tool
+
+### `_others_image_processing/depth_analysis/`
+
+**`depth_analysis.ipynb`** - 一键批量处理深度曲线分析  
+One-step batch processing for depth curve analysis
+
+#### **功能 / Functions**
+1. 读取 `0_raw_png/*.png` 提取绿色通道生成热力图 → `1_red_png/`  
+   Extract green channel from raw images to generate heatmaps
+2. 提取顶部/底部边界，10次多项式拟合曲线 → `2_depth_line/`  
+   Extract top/bottom boundaries, 10th-degree polynomial fitting
+
+#### **自动识别尺寸 / Auto Size Detection**
+- **400** → X轴 0-80px  
+- **600** → X轴 0-120px  
+- **800** → X轴 0-160px
+
+#### **关键特性 / Key Features**
+- 坐标值 ×5 显示实际尺度 / Coordinates ×5 for actual scale
+- 加粗刻度线和边框 / Bold ticks and borders (linewidth=2)
+- 自动阈值过滤（默认50）/ Auto threshold filtering (default 50)
+- 批量处理含错误跳过 / Batch processing with error skipping
+
+#### **使用 / Usage**
+```bash
+cd _others_image_processing/depth_analysis
+jupyter notebook depth_analysis.ipynb  # Run all cells
+```
+
+**输出 / Output**: 6张热力图 + 6张深度曲线图（自动适配400/600/800尺寸）  
+6 heatmaps + 6 depth curve plots (auto-adapted for 400/600/800 sizes)
+

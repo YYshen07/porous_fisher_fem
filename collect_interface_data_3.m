@@ -14,7 +14,7 @@ else % 缺省时为以下参数
     Ly=60;
     afr=0.25;
     total_steps=3000; % 默认总步数为1500
-    step_interval=60; % 默认每10步收集一次
+    step_interval=20; % 默认每10步收集一次
 end
 
 % 只使用iflag=1的情况
