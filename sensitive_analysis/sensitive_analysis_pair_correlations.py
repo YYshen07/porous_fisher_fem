@@ -107,7 +107,7 @@ for params, rows in sorted_groups:
         spearman_values.append(spearman_r)
 
 # Column headers - include L, T50 and afr with square
-headers = ['L', r'$a_{fr}^2$', r'$u_c$', r'$T_{50}$', 'Time Window', 'Pearson r', r'Spearman $\rho$']
+headers = ['L', r'$a^2$', r'$u_c$', r'$T_{50}$', 'Time Window', 'Pearson r (P value)', r'Spearman $\rho$ (P value)']
 
 # Group data by L value
 data_by_L = defaultdict(lambda: {'data': [], 'pearson': [], 'spearman': []})
@@ -153,9 +153,12 @@ for L_value in sorted(data_by_L.keys()):
     spearman_values_L = data_by_L[L_value]['spearman']
     
     # Create figure - very compact layout
-    fig, ax = plt.subplots(figsize=(10, len(table_data_L) * 0.28 + 0.7))
+    fig, ax = plt.subplots(figsize=(10, len(table_data_L) * 0.28 + 0.9))
     ax.axis('tight')
     ax.axis('off')
+    
+    # Add title with negative pad to bring it closer
+    plt.title(f'Sensitivity Analysis for L={L_value} μm', fontsize=14, weight='bold', pad=-20, y=0.98)
     
     # Create table
     table = ax.table(cellText=table_data_L, colLabels=headers, cellLoc='center', loc='center')

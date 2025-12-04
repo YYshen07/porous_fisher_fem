@@ -105,11 +105,16 @@ for L_value in L_values:
             table_data.append(table_row)
     
     # Column headers
-    headers = ['L', r'$a_{fr}^2$', r'$u_c$', r'$t$', 'Depth']
+    headers = ['L', r'$a^2$', r'$u_c$', r'$t$ (steps)', 'Depth']
     
-    # Create figure - more compact layout
-    fig_height = len(table_data) * 0.25 + 0.65
-    fig, ax = plt.subplots(figsize=(7.5, fig_height))
+    # Create figure - more compact layout with extra space for title
+    fig_height = len(table_data) * 0.20 + 1.3
+    fig, ax = plt.subplots(figsize=(6.5, fig_height))
+    
+    # Add title at the top with more spacing
+    fig.suptitle(f'Sensitivity Analysis of Maximum Infiltration Depth for L={L_value * 10} μm', 
+                 fontsize=12, weight='bold', y=0.985)
+    
     ax.axis('tight')
     ax.axis('off')
     
@@ -118,15 +123,15 @@ for L_value in L_values:
     
     # Style the table - LaTeX three-line style, very compact
     table.auto_set_font_size(False)
-    table.set_fontsize(9.5)
-    table.scale(1, 1.15)  # More compact row height
+    table.set_fontsize(10)
+    table.scale(1, 1.1)  # More compact row height
     
     # Remove all cell borders first and set compact padding
     for key, cell in table.get_celld().items():
         cell.set_linewidth(0)
         cell.set_edgecolor('white')
         cell.set_facecolor('white')
-        cell.PAD = 0.02  # Reduced padding for tighter spacing
+        cell.PAD = 0.015  # Reduced padding for tighter spacing
     
     # Header styling - bold, no background color
     for i in range(len(headers)):
@@ -169,11 +174,11 @@ for L_value in L_values:
     
     # Adjust column widths - more compact spacing
     for i in range(len(table_data) + 1):
-        table[(i, 0)].set_width(0.10)  # L column
-        table[(i, 1)].set_width(0.12)  # afr column
-        table[(i, 2)].set_width(0.12)  # threshold column
+        table[(i, 0)].set_width(0.08)  # L column
+        table[(i, 1)].set_width(0.10)  # afr column
+        table[(i, 2)].set_width(0.10)  # threshold column
         table[(i, 3)].set_width(0.15)  # timestep column
-        table[(i, 4)].set_width(0.18)  # depth column
+        table[(i, 4)].set_width(0.15)  # depth column
     
     plt.tight_layout()
     filename = f'3d_depth_analysis_{L_value * 10}.png'

@@ -135,90 +135,80 @@ This folder hosts MATLAB and Python (Jupyter) scripts for finite-element–style
 
 ---
 
-## 七、图像处理工具 / Image Processing Tools
+## 七、其他工具 / Other Tools
 
-### `_others_image_processing/covarage_heatmap/`
+### `_others_image_processing/`
 
-覆盖热力图处理工具：原始图像 → 灰度/彩色热力图 → 交互式裁剪 → 3D可视化。  
-Coverage heatmap tools: raw images → grayscale/colored heatmaps → interactive cropping → 3D visualization.
-
-#### **三步工作流程 / Three-Step Workflow**
-
-1. **`0_raw2gray_colored.ipynb`**（Jupyter Notebook）  
-   - 将 `0_raw_png/*.png` 转为灰度图和彩色热力图，输出到 `1_gray_colored_png/`。  
-     Converts raw images to grayscale and colored heatmaps in `1_gray_colored_png/`.
-   - 生成颜色映射标尺 `colormap_scale_bar.png`。  
-     Generates color mapping scale bar.
-
-2. **`1_interactive_crop.py`**（Python 脚本）  
-   - 修改脚本中 `IMAGE_NAME = "400_1"`，运行后点击两点选择裁剪区域，按 ESC 保存。  
-     Modify `IMAGE_NAME`, run, click two points to crop, press ESC to save.
-   - 输出裁剪图像到 `2_catched/liti*.png` 和透明度处理图像 `new_liti*.png`。  
-     Outputs cropped images to `2_catched/`.
-   - 需在 `covarage_heatmap` 目录下运行，每张图运行一次。  
-     Must run in `covarage_heatmap` directory, once per image.
-
-3. **`2_batch_3d_visualization.ipynb`**（Jupyter Notebook）  
-   - 批量读取 `2_catched/new_liti*.png`，生成灰度和绿色两版本的3D体素可视化。  
-     Batch processes images to create grayscale and green 3D voxel visualizations.
-   - 可修改 `IMAGE_NAMES` 列表选择要处理的图像。  
-     Modify `IMAGE_NAMES` list to select images to process.
-
-#### **使用示例 / Usage Example**
-
-```bash
-# Step 1: Jupyter 中运行 / Run in Jupyter
-0_raw2gray_colored.ipynb
-
-# Step 2: 逐张裁剪（修改 IMAGE_NAME 后运行）/ Crop one by one
-cd _others_image_processing/covarage_heatmap
-python 1_interactive_crop.py  # IMAGE_NAME = "400_1"
-python 1_interactive_crop.py  # IMAGE_NAME = "400_2"
-# ...
-
-# Step 3: Jupyter 中批量3D可视化 / Batch 3D visualization in Jupyter
-2_batch_3d_visualization.ipynb
-```
-
-#### **注意事项 / Notes**
-
-- 颜色映射、透明度阈值(64)、3D厚度(3)等参数已校准，不要修改。  
-  Color mapping, transparency threshold (64), 3D thickness (3) are calibrated; do not modify.
-- Python 脚本避免内核崩溃，处理完自动退出。  
-  Python script avoids kernel crashes and exits after processing.
+此目录包含三个独立的图像处理工具，用于不同类型的数据分析。  
+This directory contains three independent image processing tools for different data analysis tasks.
 
 ---
 
-## 八、深度分析工具 / Depth Analysis Tool
+#### **1. 覆盖热力图处理 / Coverage Heatmap Processing**
+**位置 / Location**: `covarage_heatmap/`
 
-### `_others_image_processing/depth_analysis/`
+**功能 / Purpose**: 原始图像 → 灰度/彩色热力图 → 交互式裁剪 → 3D可视化  
+Raw images → grayscale/colored heatmaps → interactive cropping → 3D visualization
 
-**`depth_analysis.ipynb`** - 一键批量处理深度曲线分析  
-One-step batch processing for depth curve analysis
+**三步工作流程 / Workflow**:
 
-#### **功能 / Functions**
-1. 读取 `0_raw_png/*.png` 提取绿色通道生成热力图 → `1_red_png/`  
-   Extract green channel from raw images to generate heatmaps
-2. 提取顶部/底部边界，10次多项式拟合曲线 → `2_depth_line/`  
-   Extract top/bottom boundaries, 10th-degree polynomial fitting
+1. **`0_raw2gray_colored.ipynb`** - 将 `0_raw_png/*.png` 转为热力图，输出到 `1_gray_colored_png/`  
+   Converts raw images to heatmaps and generates color scale bar
 
-#### **自动识别尺寸 / Auto Size Detection**
-- **400** → X轴 0-80px  
-- **600** → X轴 0-120px  
-- **800** → X轴 0-160px
+2. **`1_interactive_crop.py`** - 修改脚本中 `IMAGE_NAME`，点击两点裁剪，ESC保存到 `2_catched/`  
+   Modify `IMAGE_NAME`, click two points to crop, press ESC to save
 
-#### **关键特性 / Key Features**
-- 坐标值 ×5 显示实际尺度 / Coordinates ×5 for actual scale
-- 加粗刻度线和边框 / Bold ticks and borders (linewidth=2)
-- 自动阈值过滤（默认50）/ Auto threshold filtering (default 50)
-- 批量处理含错误跳过 / Batch processing with error skipping
+3. **`2_batch_3d_visualization.ipynb`** - 批量生成3D体素可视化（灰度+绿色版本）  
+   Batch generates 3D voxel visualizations (grayscale + green versions)
 
-#### **使用 / Usage**
+**使用示例 / Usage**:
 ```bash
-cd _others_image_processing/depth_analysis
-jupyter notebook depth_analysis.ipynb  # Run all cells
+# Step 1: Jupyter 运行 / Run in Jupyter: 0_raw2gray_colored.ipynb
+# Step 2: 逐张裁剪 / Crop one by one
+cd _others_image_processing/covarage_heatmap
+python 1_interactive_crop.py  # 修改 IMAGE_NAME
+# Step 3: Jupyter 运行 / Run in Jupyter: 2_batch_3d_visualization.ipynb
 ```
 
-**输出 / Output**: 6张热力图 + 6张深度曲线图（自动适配400/600/800尺寸）  
-6 heatmaps + 6 depth curve plots (auto-adapted for 400/600/800 sizes)
+---
+
+#### **2. 深度曲线分析 / Depth Curve Analysis**
+**位置 / Location**: `depth_analysis/`
+
+**功能 / Purpose**: 批量提取图像深度边界并进行多项式拟合  
+Batch extracts image depth boundaries with polynomial fitting
+
+**主要特性 / Features**:
+- 提取绿色通道生成热力图 → `1_red_png/`  
+  Extract green channel to generate heatmaps
+- 10次多项式拟合顶部/底部边界 → `2_depth_line/`  
+  10th-degree polynomial fitting for top/bottom boundaries
+- 自动识别尺寸（400/600/800），坐标×5显示实际尺度  
+  Auto size detection, coordinates ×5 for actual scale
+
+**使用 / Usage**:
+```bash
+cd _others_image_processing/depth_analysis
+jupyter notebook depth_analysis.ipynb  # 运行所有单元格 / Run all cells
+```
+
+**输出 / Output**: 6张热力图 + 6张深度曲线图  
+6 heatmaps + 6 depth curve plots
+
+---
+
+#### **3. 伤口愈合分析 / Wound Healing Analysis**
+**位置 / Location**: `older/`
+
+**功能 / Purpose**: 分析划痕实验（Scratch Assay）数据，比较不同组别愈合速度  
+Analyzes scratch assay data to compare wound healing rates across groups
+
+**使用 / Usage**:
+```bash
+cd _others_image_processing/older
+jupyter notebook older.ipynb  # 修改数据后运行 / Modify data and run
+```
+
+**输出 / Output**: 愈合曲线图和统计分析结果  
+Healing curve plots and statistical analysis results
 
